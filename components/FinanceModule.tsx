@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Plus, Search, Download, Printer, Send, CheckCircle2, AlertCircle,
   Clock, Banknote, FileText, X, ChevronRight, Hash, CreditCard, Receipt,
   Eye, Trash2, Filter, Wallet, Building, Smartphone, Edit3, Settings
 } from 'lucide-react';
-import { MOCK_STUDENTS, GRADES, YEARS } from '../constants';
+import { GRADES, YEARS } from '../constants';
 import { Invoice, Student, Payment } from '../types';
 
 interface FeeStructureItem {
@@ -15,7 +15,11 @@ interface FeeStructureItem {
   category: string;
 }
 
-const FinanceModule: React.FC = () => {
+interface FinanceModuleProps {
+  students: Student[];
+}
+
+const FinanceModule: React.FC<FinanceModuleProps> = ({ students }) => {
   const [activeSubTab, setActiveSubTab] = useState<'invoices' | 'payments' | 'structure'>('invoices');
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -35,28 +39,24 @@ const FinanceModule: React.FC = () => {
   const [isAddingFeeItem, setIsAddingFeeItem] = useState(false);
   const [newFeeItem, setNewFeeItem] = useState({ name: '', amount: '', category: 'Tuition' });
 
-  // Finance State
-  const [invoices, setInvoices] = useState<Invoice[]>([
-    {
-      id: 'inv1',
-      invoiceNo: 'SCH/2024/001',
-      studentId: '1',
-      studentName: 'Kevin Otieno',
-      admNo: '1023',
-      grade: 'Grade 6',
+  // Dynamically generated invoices from students with balances
+  const dynamicInvoices = useMemo(() => {
+    return students.filter(s => s.feeBalance > 0).map(student => ({
+      id: `dyn-${student.id}`,
+      invoiceNo: `INV/${student.admNo}`,
+      studentId: student.id,
+      studentName: student.name,
+      admNo: student.admNo,
+      grade: student.grade,
       term: 'Term 1',
       year: 2024,
-      items: [
-        { description: 'Tuition Fee', amount: 12000 },
-        { description: 'Lunch Program', amount: 4500 },
-        { description: 'Exam Materials', amount: 1500 },
-      ],
-      totalAmount: 18000,
-      paidAmount: 5500,
-      dueDate: '2024-02-15',
+      items: [{ description: 'Opening Balance / Tuition', amount: student.feeBalance }],
+      totalAmount: student.feeBalance,
+      paidAmount: 0,
+      dueDate: '2024-05-15',
       status: 'Partial'
-    }
-  ]);
+    } as Invoice));
+  }, [students]);
 
   const [payments, setPayments] = useState<Payment[]>([]);
 
@@ -69,7 +69,7 @@ const FinanceModule: React.FC = () => {
     reference: ''
   });
 
-  const filteredInvoices = invoices.filter(inv => 
+  const filteredInvoices = dynamicInvoices.filter(inv => 
     inv.studentName.toLowerCase().includes(invoiceSearch.toLowerCase()) || 
     inv.invoiceNo.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
     inv.admNo.includes(invoiceSearch)
@@ -80,21 +80,7 @@ const FinanceModule: React.FC = () => {
     const amountNum = Number(paymentForm.amount);
     if (!amountNum || !paymentForm.invoiceId) return;
 
-    // 1. Update Invoice
-    const updatedInvoices = invoices.map(inv => {
-      if (inv.id === paymentForm.invoiceId) {
-        const newPaid = inv.paidAmount + amountNum;
-        return {
-          ...inv,
-          paidAmount: newPaid,
-          status: newPaid >= inv.totalAmount ? 'Paid' : 'Partial'
-        } as Invoice;
-      }
-      return inv;
-    });
-    setInvoices(updatedInvoices);
-
-    // 2. Add Payment Record
+    // Add Payment Record
     const newPayment: Payment = {
       id: Date.now().toString(),
       receiptNo: `REC/${Math.floor(Math.random() * 9000) + 1000}`,
@@ -107,14 +93,15 @@ const FinanceModule: React.FC = () => {
     };
     setPayments([newPayment, ...payments]);
 
-    // 3. Reset and Show Success
+    // Reset and Show Success
     setIsPaymentModalOpen(false);
-    setSelectedReceipt(newPayment); // Auto-open receipt
+    setSelectedReceipt(newPayment); 
     setPaymentForm({ studentId: '', invoiceId: '', amount: '', method: 'M-Pesa', reference: '' });
   };
 
   const handleSendSMS = (inv: Invoice) => {
-    alert(`Fee Reminder SMS triggered for ${inv.studentName} (Parent: ${MOCK_STUDENTS.find(s => s.id === inv.studentId)?.parentPhone})`);
+    const student = students.find(s => s.id === inv.studentId);
+    alert(`Fee Reminder SMS triggered for ${inv.studentName} (Parent: ${student?.parentPhone})`);
   };
 
   const handleAddFeeItem = (e: React.FormEvent) => {
@@ -133,12 +120,6 @@ const FinanceModule: React.FC = () => {
 
   const removeFeeItem = (id: string) => {
     setFeeItems(feeItems.filter(f => f.id !== id));
-  };
-
-  const handleGenerateInvoice = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simplified logic for this turn
-    setIsInvoiceModalOpen(false);
   };
 
   return (
@@ -166,7 +147,7 @@ const FinanceModule: React.FC = () => {
 
       <div className="flex border-b border-slate-200 gap-8 overflow-x-auto no-scrollbar">
         {[
-          { id: 'invoices', label: 'Invoices', icon: Receipt },
+          { id: 'invoices', label: 'Student Invoices', icon: Receipt },
           { id: 'payments', label: 'Payment History', icon: Clock },
           { id: 'structure', label: 'Fee Structure', icon: Wallet }
         ].map((tab) => (
@@ -189,8 +170,8 @@ const FinanceModule: React.FC = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
                 type="text" 
-                placeholder="Filter by Student or Invoice #..." 
-                className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" 
+                placeholder="Search by Student Name or ADM..." 
+                className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-bold" 
                 value={invoiceSearch}
                 onChange={(e) => setInvoiceSearch(e.target.value)}
               />
@@ -199,19 +180,18 @@ const FinanceModule: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                <tr><th className="px-8 py-5">Ref</th><th className="px-8 py-5">Student</th><th className="px-8 py-5">Amount</th><th className="px-8 py-5">Status</th><th className="px-8 py-5 text-right">Action</th></tr>
+                <tr><th className="px-8 py-5">Ref No</th><th className="px-8 py-5">Learner Profile</th><th className="px-8 py-5">Oustanding Bal</th><th className="px-8 py-5">Status</th><th className="px-8 py-5 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredInvoices.length > 0 ? filteredInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-slate-50/50 group transition-all">
                     <td className="px-8 py-5 text-xs font-black text-slate-900">{inv.invoiceNo}</td>
                     <td className="px-8 py-5">
-                      <p className="text-sm font-bold text-slate-900">{inv.studentName}</p>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">ADM: {inv.admNo}</p>
+                      <p className="text-sm font-black text-slate-900">{inv.studentName}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">ADM: {inv.admNo} • {inv.grade}</p>
                     </td>
                     <td className="px-8 py-5">
                       <p className="text-sm font-black text-slate-900">KES {inv.totalAmount.toLocaleString()}</p>
-                      <p className="text-[10px] font-bold text-emerald-600">Paid: {inv.paidAmount.toLocaleString()}</p>
                     </td>
                     <td className="px-8 py-5">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -226,7 +206,7 @@ const FinanceModule: React.FC = () => {
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={5} className="p-12 text-center text-slate-400 font-bold uppercase text-xs">No matching invoices found</td></tr>
+                  <tr><td colSpan={5} className="p-12 text-center text-slate-400 font-bold uppercase text-xs">No students with pending balances found</td></tr>
                 )}
               </tbody>
             </table>
@@ -234,6 +214,7 @@ const FinanceModule: React.FC = () => {
         </div>
       )}
 
+      {/* Payment History, Fee Structure & Modals ... */}
       {activeSubTab === 'payments' && (
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in">
            <div className="overflow-x-auto">
@@ -248,7 +229,7 @@ const FinanceModule: React.FC = () => {
                    payments.map(pay => (
                      <tr key={pay.id} className="hover:bg-slate-50/50 transition-all group">
                        <td className="px-8 py-5 text-xs font-black text-slate-900">{pay.receiptNo}</td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-700">{MOCK_STUDENTS.find(s => s.id === pay.studentId)?.name}</td>
+                       <td className="px-8 py-5 text-sm font-bold text-slate-700">{students.find(s => s.id === pay.studentId)?.name}</td>
                        <td className="px-8 py-5 text-sm font-black text-emerald-600">KES {pay.amount.toLocaleString()}</td>
                        <td className="px-8 py-5"><span className="text-[10px] font-black uppercase bg-slate-100 px-2 py-1 rounded-lg">{pay.method}</span></td>
                        <td className="px-8 py-5 text-right"><button onClick={() => setSelectedReceipt(pay)} className="p-2 text-slate-400 hover:text-emerald-600"><Printer className="w-4 h-4" /></button></td>
@@ -297,7 +278,6 @@ const FinanceModule: React.FC = () => {
         </div>
       )}
 
-      {/* Record Payment Modal */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsPaymentModalOpen(false)} />
@@ -317,13 +297,13 @@ const FinanceModule: React.FC = () => {
                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
                    value={paymentForm.invoiceId}
                    onChange={e => {
-                     const inv = invoices.find(i => i.id === e.target.value);
+                     const inv = dynamicInvoices.find(i => i.id === e.target.value);
                      setPaymentForm({...paymentForm, invoiceId: e.target.value, studentId: inv?.studentId || ''});
                    }}
                  >
-                   <option value="">Search Outstanding Invoices...</option>
-                   {invoices.filter(i => i.status !== 'Paid').map(inv => (
-                     <option key={inv.id} value={inv.id}>{inv.studentName} - {inv.invoiceNo} (Bal: {(inv.totalAmount - inv.paidAmount).toLocaleString()})</option>
+                   <option value="">Search Outstanding Balances...</option>
+                   {dynamicInvoices.filter(i => i.status !== 'Paid').map(inv => (
+                     <option key={inv.id} value={inv.id}>{inv.studentName} - {inv.invoiceNo} (Bal: {inv.totalAmount.toLocaleString()})</option>
                    ))}
                  </select>
                </div>
@@ -379,47 +359,6 @@ const FinanceModule: React.FC = () => {
         </div>
       )}
 
-      {/* Add Fee Item Modal */}
-      {isAddingFeeItem && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={() => setIsAddingFeeItem(false)} />
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden relative z-10 animate-in zoom-in-95 duration-300">
-             <div className="p-10 space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                   <Settings className="w-6 h-6 text-emerald-600" />
-                   <h3 className="text-xl font-black uppercase tracking-tight">Add Fee Structure Item</h3>
-                </div>
-                <form onSubmit={handleAddFeeItem} className="space-y-6">
-                   <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name / Description</label>
-                      <input required type="text" placeholder="e.g. Tuition Grade 4" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" value={newFeeItem.name} onChange={e => setNewFeeItem({...newFeeItem, name: e.target.value})} />
-                   </div>
-                   <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
-                        <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none" value={newFeeItem.category} onChange={e => setNewFeeItem({...newFeeItem, category: e.target.value})}>
-                           <option>Tuition</option>
-                           <option>Transport</option>
-                           <option>Auxiliary</option>
-                           <option>Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Amount (KES)</label>
-                        <input required type="number" placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-black text-emerald-700" value={newFeeItem.amount} onChange={e => setNewFeeItem({...newFeeItem, amount: e.target.value})} />
-                      </div>
-                   </div>
-                   <div className="flex gap-3">
-                      <button type="button" onClick={() => setIsAddingFeeItem(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Discard</button>
-                      <button type="submit" className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">Save Item</button>
-                   </div>
-                </form>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Official Receipt Modal */}
       {selectedReceipt && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-md animate-in fade-in" onClick={() => setSelectedReceipt(null)} />
@@ -433,7 +372,7 @@ const FinanceModule: React.FC = () => {
 
                 <div className="bg-slate-50 p-6 rounded-[24px] space-y-4 border border-slate-100">
                    <div className="flex justify-between border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">Receipt No.</span><span className="text-sm font-black text-slate-900">{selectedReceipt.receiptNo}</span></div>
-                   <div className="flex justify-between border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">Learner</span><span className="text-sm font-bold text-slate-700">{MOCK_STUDENTS.find(s => s.id === selectedReceipt.studentId)?.name}</span></div>
+                   <div className="flex justify-between border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">Learner</span><span className="text-sm font-bold text-slate-700">{students.find(s => s.id === selectedReceipt.studentId)?.name}</span></div>
                    <div className="flex justify-between border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">Method</span><span className="text-sm font-bold text-slate-700">{selectedReceipt.method}</span></div>
                    <div className="flex justify-between border-b border-slate-200 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase">Ref ID</span><span className="text-xs font-black text-slate-500">{selectedReceipt.reference}</span></div>
                    <div className="pt-2 text-center">
@@ -445,10 +384,6 @@ const FinanceModule: React.FC = () => {
                 <div className="pt-4 flex flex-col gap-2 no-print">
                    <button onClick={() => window.print()} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2"><Printer className="w-4 h-4" /> Print Receipt</button>
                    <button onClick={() => setSelectedReceipt(null)} className="w-full bg-slate-100 text-slate-600 py-4 rounded-2xl font-bold text-sm">Close / Dismiss</button>
-                </div>
-                
-                <div className="text-center pt-2">
-                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.5em]">Digitally Certified by ElimuSmart</p>
                 </div>
              </div>
           </div>

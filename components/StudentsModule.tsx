@@ -1,16 +1,17 @@
 
 import React, { useState } from 'react';
-import { Search, Plus, Filter, Trash2, Eye, MapPin, Phone, AlertTriangle, X, UserPlus, Calendar, ShieldAlert, UserCircle } from 'lucide-react';
-import { MOCK_STUDENTS, GRADES, YEARS } from '../constants';
+import { Search, Plus, Trash2, Eye, X, UserPlus, ShieldAlert, Banknote } from 'lucide-react';
+import { GRADES } from '../constants';
 import { Student, UserRole } from '../types';
 
 interface StudentsModuleProps {
   userRole: UserRole;
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
+const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, setStudents }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; student: Student | null }>({
@@ -55,10 +56,10 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
     const studentToAdd = {
       ...newStudent,
       id: Date.now().toString(),
+      feeBalance: Number(newStudent.feeBalance) || 0
     } as Student;
-    setStudents([studentToAdd, ...students]);
+    setStudents(prev => [studentToAdd, ...prev]);
     setIsEnrollModalOpen(false);
-    // Reset form
     setNewStudent({
       name: '', admNo: '', gender: 'Male', dob: '2015-01-01',
       grade: 'PP1', stream: 'A', parentName: '', parentPhone: '',
@@ -177,7 +178,7 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
             </div>
             <form onSubmit={handleEnroll} className="p-8 overflow-y-auto space-y-8">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
+                 <div className="md:col-span-2">
                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Student Full Name</label>
                    <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
                  </div>
@@ -188,21 +189,42 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
                  <div>
                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Gender</label>
                    <div className="flex gap-2">
-                     <button type="button" onClick={() => setNewStudent({...newStudent, gender: 'Male'})} className={`flex-1 p-4 rounded-2xl border-2 font-black text-xs ${newStudent.gender === 'Male' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100'}`}>Male</button>
-                     <button type="button" onClick={() => setNewStudent({...newStudent, gender: 'Female'})} className={`flex-1 p-4 rounded-2xl border-2 font-black text-xs ${newStudent.gender === 'Female' ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-slate-100'}`}>Female</button>
+                     <button type="button" onClick={() => setNewStudent({...newStudent, gender: 'Male'})} className={`flex-1 p-4 rounded-2xl border-2 font-black text-xs transition-all ${newStudent.gender === 'Male' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100'}`}>Male</button>
+                     <button type="button" onClick={() => setNewStudent({...newStudent, gender: 'Female'})} className={`flex-1 p-4 rounded-2xl border-2 font-black text-xs transition-all ${newStudent.gender === 'Female' ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-slate-100'}`}>Female</button>
                    </div>
                  </div>
+                 
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Grade / Level</label>
+                      <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold appearance-none" value={newStudent.grade} onChange={e => setNewStudent({...newStudent, grade: e.target.value})}>
+                        {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Stream</label>
+                      <input required type="text" placeholder="e.g. A" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" value={newStudent.stream} onChange={e => setNewStudent({...newStudent, stream: e.target.value.toUpperCase()})} />
+                    </div>
+                 </div>
+
                  <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Date of Birth</label>
                     <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" value={newStudent.dob} onChange={e => setNewStudent({...newStudent, dob: e.target.value})} />
                  </div>
-                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Grade / Level</label>
-                   <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" value={newStudent.grade} onChange={e => setNewStudent({...newStudent, grade: e.target.value})}>
-                     {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                   </select>
+
+                 <div className="md:col-span-2">
+                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><Banknote className="w-3 h-3 text-emerald-600" /> Opening Fee Balance (KES)</label>
+                   <input 
+                    type="number" 
+                    placeholder="0" 
+                    className="w-full bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 text-lg font-black text-emerald-700 focus:ring-2 focus:ring-emerald-500" 
+                    value={newStudent.feeBalance} 
+                    onChange={e => setNewStudent({...newStudent, feeBalance: Number(e.target.value)})} 
+                   />
+                   <p className="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">This balance will automatically push to the Finance module.</p>
                  </div>
-                 <div>
+
+                 <div className="md:col-span-2">
                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Residence / Estate</label>
                    <input required type="text" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" value={newStudent.residence} onChange={e => setNewStudent({...newStudent, residence: e.target.value})} />
                  </div>
@@ -228,7 +250,7 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
         </div>
       )}
 
-      {/* View Student Modal */}
+      {/* View Student Modal & Delete Modal remains same ... */}
       {viewingStudent && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setViewingStudent(null)} />
@@ -252,6 +274,10 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
                    <p className="text-sm font-black text-slate-700">{viewingStudent.residence}</p>
                  </div>
                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 col-span-2">
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 text-emerald-600">Current Fee Balance</p>
+                   <p className="text-lg font-black text-slate-900">KES {viewingStudent.feeBalance.toLocaleString()}</p>
+                 </div>
+                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 col-span-2">
                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Parent/Guardian</p>
                    <p className="text-sm font-black text-slate-900">{viewingStudent.parentName}</p>
                    <p className="text-xs font-bold text-slate-500 mt-0.5">{viewingStudent.parentPhone}</p>
@@ -264,7 +290,6 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole }) => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setDeleteModal({isOpen: false, student: null})} />

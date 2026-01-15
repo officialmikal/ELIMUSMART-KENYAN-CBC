@@ -2,9 +2,10 @@
 import React, { useState, useMemo } from 'react';
 import { 
   LayoutDashboard, Users, PenTool, FileText, Banknote, BarChart3, 
-  MessageSquare, Settings, LogOut, Menu, X, Bell, UserCircle, Lock
+  MessageSquare, Settings, LogOut, Menu, X, Bell, Lock
 } from 'lucide-react';
-import { UserRole, User } from './types';
+import { UserRole, User, Student } from './types';
+import { MOCK_STUDENTS } from './constants';
 import Dashboard from './components/Dashboard';
 import StudentsModule from './components/StudentsModule';
 import MarksEntryModule from './components/MarksEntryModule';
@@ -20,7 +21,12 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   
-  // Mock login logic
+  // Persisted state for the whole application
+  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
+  
+  // Global Academic Ledger: studentId -> subjectId -> { score, remark }
+  const [marks, setMarks] = useState<Record<string, Record<string, { score: string; remark: string }>>>({});
+
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
 
@@ -49,6 +55,21 @@ const App: React.FC = () => {
     ];
     return items.filter(item => item.roles.includes(currentUser.role));
   }, [currentUser]);
+
+  const renderContent = () => {
+    const role = currentUser?.role || UserRole.NONE;
+    switch (activeTab) {
+      case 'dashboard': return <Dashboard onNavigate={setActiveTab} userRole={role} studentsCount={students.length} />;
+      case 'students': return <StudentsModule userRole={role} students={students} setStudents={setStudents} />;
+      case 'marks': return <MarksEntryModule userRole={role} students={students} marks={marks} setMarks={setMarks} />;
+      case 'reports': return <ReportsModule students={students} marks={marks} />;
+      case 'finance': return <FinanceModule students={students} />;
+      case 'messaging': return <MessagingModule students={students} />;
+      case 'analytics': return <AnalyticsModule students={students} />;
+      case 'settings': return <SettingsModule />;
+      default: return <Dashboard onNavigate={setActiveTab} userRole={role} studentsCount={students.length} />;
+    }
+  };
 
   if (!isLoggedIn) {
     return (
@@ -95,21 +116,6 @@ const App: React.FC = () => {
       </div>
     );
   }
-
-  const renderContent = () => {
-    const role = currentUser?.role || UserRole.NONE;
-    switch (activeTab) {
-      case 'dashboard': return <Dashboard onNavigate={setActiveTab} userRole={role} />;
-      case 'students': return <StudentsModule userRole={role} />;
-      case 'marks': return <MarksEntryModule userRole={role} />;
-      case 'reports': return <ReportsModule />;
-      case 'finance': return <FinanceModule />;
-      case 'messaging': return <MessagingModule />;
-      case 'analytics': return <AnalyticsModule />;
-      case 'settings': return <SettingsModule />;
-      default: return <Dashboard onNavigate={setActiveTab} userRole={role} />;
-    }
-  };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden relative">

@@ -1,13 +1,26 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Building2, ShieldCheck, MessageSquare, CreditCard, UserPlus, 
-  Trash2, Edit, Save, Plus, Globe, CheckCircle, BookOpen, Key, X, UserCircle
+  Trash2, Edit, Save, Plus, Globe, CheckCircle, BookOpen, Key, X, UserCircle, Upload, Image as ImageIcon, Loader2, Sparkles
 } from 'lucide-react';
 import { UserRole } from '../types';
 
 const SettingsModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'roles' | 'system'>('profile');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Institution Profile State
+  const [profile, setProfile] = useState({
+    schoolName: 'Greenhill Academy',
+    location: "Lang'ata Road, Nairobi - Kenya",
+    timezone: '(GMT+03:00) East African Time (Nairobi)',
+    currency: 'Kenyan Shilling (KES)'
+  });
+
   const [users, setUsers] = useState([
     { id: '1', name: 'Joseph Mwalimu', role: UserRole.CLASS_TEACHER, username: 'joseph' },
     { id: '2', name: 'Mary Otieno', role: UserRole.BURSAR, username: 'mary' },
@@ -41,8 +54,48 @@ const SettingsModule: React.FC = () => {
     setNewUser({ name: '', role: UserRole.CLASS_TEACHER, username: '' });
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerLogoInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleCommitUpdates = () => {
+    setIsSaving(true);
+    // Simulate API delay
+    setTimeout(() => {
+      setIsSaving(false);
+      setShowSuccess(true);
+      // Auto-hide success message
+      setTimeout(() => setShowSuccess(false), 4000);
+    }, 1800);
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto">
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto pb-20">
+      {/* Success Notification Toast */}
+      {showSuccess && (
+        <div className="fixed top-8 right-8 z-[300] bg-slate-900 text-white px-6 py-4 rounded-[24px] shadow-2xl flex items-center gap-4 animate-in slide-in-from-right-8">
+          <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="font-black text-sm uppercase tracking-tight">System Synchronized</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Institution profiles and credentials updated.</p>
+          </div>
+          <button onClick={() => setShowSuccess(false)} className="ml-4 p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
           <h2 className="text-3xl font-black text-slate-900">Administrator Console</h2>
@@ -60,11 +113,63 @@ const SettingsModule: React.FC = () => {
           <section className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
             <h3 className="text-xl font-black text-slate-900 flex items-center gap-3"><Building2 className="w-6 h-6 text-emerald-600" /> Institution Profile</h3>
             <div className="space-y-6">
-              <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Legal School Name</label><input type="text" defaultValue="Greenhill Academy" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" /></div>
-              <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Physical Location</label><input type="text" defaultValue="Lang'ata Road, Nairobi - Kenya" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" /></div>
-              <div className="flex items-center gap-6 pt-2">
-                 <div className="w-24 h-24 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-[28px] flex items-center justify-center text-emerald-400 text-[10px] font-black uppercase tracking-widest text-center px-4">School Seal</div>
-                 <button className="bg-emerald-600 text-white px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">Upload New Logo</button>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Legal School Name</label>
+                <input 
+                  type="text" 
+                  value={profile.schoolName} 
+                  onChange={(e) => setProfile({...profile, schoolName: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Physical Location</label>
+                <input 
+                  type="text" 
+                  value={profile.location} 
+                  onChange={(e) => setProfile({...profile, location: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" 
+                />
+              </div>
+              
+              <div className="space-y-3 pt-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Institutional Identity (Seal)</label>
+                <div className="flex items-center gap-6">
+                   <div className="relative group">
+                     <div className="w-24 h-24 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-[28px] flex items-center justify-center text-emerald-400 text-[10px] font-black uppercase tracking-widest text-center px-4 overflow-hidden">
+                       {logoUrl ? (
+                         <img src={logoUrl} alt="School Seal" className="w-full h-full object-contain p-2" />
+                       ) : (
+                         "School Seal"
+                       )}
+                     </div>
+                     {logoUrl && (
+                       <button 
+                        onClick={() => setLogoUrl(null)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                       >
+                         <X className="w-3 h-3" />
+                       </button>
+                     )}
+                   </div>
+                   
+                   <div className="flex flex-col gap-2">
+                     <input 
+                       type="file" 
+                       ref={fileInputRef} 
+                       className="hidden" 
+                       accept="image/*" 
+                       onChange={handleLogoUpload} 
+                     />
+                     <button 
+                       onClick={triggerLogoInput}
+                       className="bg-emerald-600 text-white px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                     >
+                       <Upload className="w-4 h-4" /> Upload New Logo
+                     </button>
+                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Recommended: Square PNG/SVG (Max 2MB)</p>
+                   </div>
+                </div>
               </div>
             </div>
           </section>
@@ -72,8 +177,30 @@ const SettingsModule: React.FC = () => {
           <section className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
             <h3 className="text-xl font-black text-slate-900 flex items-center gap-3"><Globe className="w-6 h-6 text-emerald-600" /> Regional Configuration</h3>
             <div className="space-y-6">
-              <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Timezone</label><select className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none"><option>(GMT+03:00) East African Time (Nairobi)</option></select></div>
-              <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Currency Symbol</label><select className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none"><option>Kenyan Shilling (KES)</option><option>US Dollar (USD)</option></select></div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Timezone</label>
+                <select 
+                  value={profile.timezone}
+                  onChange={(e) => setProfile({...profile, timezone: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none"
+                >
+                  <option>(GMT+03:00) East African Time (Nairobi)</option>
+                  <option>(GMT+00:00) London / UTC</option>
+                  <option>(GMT+02:00) Johannesburg</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Currency Symbol</label>
+                <select 
+                  value={profile.currency}
+                  onChange={(e) => setProfile({...profile, currency: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none"
+                >
+                  <option>Kenyan Shilling (KES)</option>
+                  <option>US Dollar (USD)</option>
+                  <option>Euro (EUR)</option>
+                </select>
+              </div>
             </div>
           </section>
         </div>
@@ -148,7 +275,7 @@ const SettingsModule: React.FC = () => {
       {isProvisionModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md animate-in fade-in" onClick={() => setIsProvisionModalOpen(false)} />
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden relative z-10 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-md:max-w-md overflow-hidden relative z-10 animate-in zoom-in-95 duration-200">
             <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <UserCircle className="w-7 h-7 text-emerald-400" />
@@ -218,8 +345,25 @@ const SettingsModule: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row justify-end gap-4 pt-8 border-t border-slate-200">
          <button className="px-10 py-4 bg-slate-100 text-slate-700 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all">Discard Changes</button>
-         <button className="px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm hover:bg-emerald-700 shadow-xl shadow-emerald-200 flex items-center justify-center gap-2 transition-all">
-           <CheckCircle className="w-5 h-5" /> Commit System Updates
+         <button 
+            onClick={handleCommitUpdates}
+            disabled={isSaving}
+            className={`px-10 py-4 rounded-2xl font-black text-sm shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 min-w-[240px] ${
+              isSaving 
+                ? 'bg-slate-800 text-slate-400 cursor-not-allowed' 
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100'
+            }`}
+          >
+           {isSaving ? (
+             <>
+               <Loader2 className="w-5 h-5 animate-spin" /> 
+               Synchronizing...
+             </>
+           ) : (
+             <>
+               <CheckCircle className="w-5 h-5" /> Commit System Updates
+             </>
+           )}
          </button>
       </div>
     </div>

@@ -8,6 +8,12 @@ export enum UserRole {
   NONE = 'NONE'
 }
 
+export interface User {
+  username: string;
+  role: UserRole;
+  name: string;
+}
+
 export interface Student {
   id: string;
   name: string;
@@ -21,6 +27,12 @@ export interface Student {
   residence: string;
   photo?: string;
   feeBalance: number;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  category: 'CBC' | 'JSS' | '8-4-4' | 'Other';
 }
 
 export interface Invoice {
@@ -41,20 +53,13 @@ export interface Invoice {
 
 export interface Payment {
   id: string;
+  receiptNo: string;
+  invoiceId: string;
   studentId: string;
   amount: number;
-  date: string;
-  method: 'M-Pesa' | 'Bank' | 'Cash';
+  method: 'M-Pesa' | 'Cash' | 'Bank';
   reference: string;
-}
-
-export interface Grade {
-  studentId: string;
-  subject: string;
-  marks: number;
-  term: string;
-  year: number;
-  remarks: string;
+  date: string;
 }
 
 export interface MessageTemplate {

@@ -1,93 +1,280 @@
 
-import React from 'react';
-import { FileText, Download, Printer, Filter, Search } from 'lucide-react';
-import { MOCK_STUDENTS } from '../constants';
+import React, { useState } from 'react';
+import { FileText, Download, Printer, Filter, Search, X, CheckCircle, GraduationCap, Eye, Loader2 } from 'lucide-react';
+import { MOCK_STUDENTS, GRADES } from '../constants';
+import { Student } from '../types';
 
 const ReportsModule: React.FC = () => {
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('All');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const filteredStudents = MOCK_STUDENTS.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.admNo.includes(searchTerm);
+    const matchesGrade = gradeFilter === 'All' || s.grade === gradeFilter;
+    return matchesSearch && matchesGrade;
+  });
+
+  const openPreview = (student: Student) => {
+    setSelectedStudent(student);
+    setIsPreviewOpen(true);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleBulkExport = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      setIsExporting(false);
+      alert('Bulk Report Generation Complete. Download started.');
+    }, 2000);
+  };
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Academic Reports</h2>
-          <p className="text-slate-500">Generate report cards and class performance lists.</p>
+          <p className="text-sm text-slate-500 font-medium">Generate termly report cards and class merit lists.</p>
         </div>
-        <div className="flex gap-2">
-           <button className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-sm transition-colors">
-            <Download className="w-5 h-5" />
+        <div className="w-full sm:w-auto flex gap-2">
+           <button 
+            disabled={isExporting}
+            onClick={handleBulkExport}
+            className="flex-1 sm:flex-none bg-slate-800 text-white px-5 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg hover:bg-slate-900 transition-all disabled:opacity-50"
+           >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Bulk Export (PDF)
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row gap-4">
+      <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-4 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search student for report card..." 
-              className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              placeholder="Search student by Name or Admission..." 
+              className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <select className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700">
-               <option>Grade 6 - A</option>
-               <option>Grade 6 - B</option>
-               <option>Grade 7 - Red</option>
+          <div className="flex gap-2 w-full md:w-auto">
+            <select 
+              className="flex-1 md:flex-none bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-bold text-slate-700 outline-none appearance-none cursor-pointer hover:bg-slate-100"
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+            >
+               <option value="All">All Grades</option>
+               {GRADES.map(grade => (
+                 <option key={grade} value={grade}>{grade}</option>
+               ))}
             </select>
-            <button className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-100 font-medium">
-              <Filter className="w-4 h-4" />
-              Filters
-            </button>
           </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {MOCK_STUDENTS.map((student) => (
-          <div key={student.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:border-emerald-200 transition-all flex flex-col">
-            <div className="flex justify-between items-start mb-4">
-               <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center font-bold text-slate-500">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filteredStudents.length > 0 ? filteredStudents.map((student) => (
+          <div key={student.id} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all flex flex-col group">
+            <div className="flex justify-between items-start mb-6">
+               <div className="flex items-center gap-4 overflow-hidden">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center font-black text-slate-500 flex-shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
                     {student.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{student.name}</h4>
-                    <p className="text-xs text-slate-500">ADM: {student.admNo}</p>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-slate-900 text-sm truncate">{student.name}</h4>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">ADM: {student.admNo}</p>
                   </div>
                </div>
-               <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                 Ready
+               <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex-shrink-0">
+                 Finalized
                </span>
             </div>
             
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Average Score</span>
-                <span className="font-bold text-slate-800">74.5%</span>
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-slate-50 p-3 rounded-2xl">
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Mean Score</p>
+                <p className="text-lg font-black text-emerald-600">74.5%</p>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Rank</span>
-                <span className="font-bold text-slate-800">12 of 45</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Overall Grade</span>
-                <span className="font-bold text-emerald-600">B+</span>
+              <div className="bg-slate-50 p-3 rounded-2xl">
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Mean Grade</p>
+                <p className="text-lg font-black text-slate-800">B+</p>
               </div>
             </div>
 
-            <div className="mt-auto flex gap-2 pt-4 border-t border-slate-50">
-               <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors">
-                  <FileText className="w-4 h-4" /> View Card
+            <div className="mt-auto pt-5 border-t border-slate-50 grid grid-cols-3 gap-2">
+               <button 
+                onClick={() => openPreview(student)}
+                className="col-span-2 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95"
+               >
+                  <Eye className="w-4 h-4" /> View Report
                </button>
-               <button className="p-2 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-lg">
+               <button onClick={handlePrint} title="Print Quick" className="flex items-center justify-center p-3 text-slate-400 hover:text-slate-900 bg-slate-50 rounded-2xl transition-all">
                   <Printer className="w-4 h-4" />
-               </button>
-               <button className="p-2 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-lg">
-                  <Download className="w-4 h-4" />
                </button>
             </div>
           </div>
-        ))}
+        )) : (
+          <div className="col-span-full p-20 text-center bg-white rounded-[40px] border border-slate-100 border-dashed">
+            <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+            <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No reports found for this filter</p>
+          </div>
+        )}
       </div>
+
+      {/* Report Card Preview Modal */}
+      {isPreviewOpen && selectedStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsPreviewOpen(false)} />
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden relative z-10 animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
+                    <GraduationCap className="w-6 h-6" />
+                 </div>
+                 <div>
+                   <h3 className="text-lg font-bold text-slate-900">Academic Report Card</h3>
+                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Term 1 • 2024 Academic Year</p>
+                 </div>
+               </div>
+               <div className="flex gap-2">
+                  <button onClick={handlePrint} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all"><Printer className="w-5 h-5" /></button>
+                  <button className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all"><Download className="w-5 h-5" /></button>
+                  <button onClick={() => setIsPreviewOpen(false)} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-slate-900 shadow-sm transition-all"><X className="w-5 h-5" /></button>
+               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-10 print-area scrollbar-hide">
+               {/* Document Header */}
+               <div className="text-center space-y-2">
+                 <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+                    <span className="text-emerald-600 font-black text-3xl">E</span>
+                 </div>
+                 <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Greenhill Academy</h1>
+                 <p className="text-sm font-bold text-slate-500">P.O. Box 12345 - 00100, Nairobi, Kenya | info@greenhill.ac.ke</p>
+                 <div className="w-32 h-[2px] bg-emerald-600 mx-auto mt-6"></div>
+               </div>
+
+               {/* Student Meta */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50 p-8 rounded-[32px] border border-slate-100">
+                 <div className="space-y-4">
+                    <div className="flex justify-between border-b border-slate-200/60 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Name</span><span className="text-sm font-black text-slate-900">{selectedStudent.name}</span></div>
+                    <div className="flex justify-between border-b border-slate-200/60 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Admission No.</span><span className="text-sm font-black text-slate-900">{selectedStudent.admNo}</span></div>
+                    <div className="flex justify-between border-b border-slate-200/60 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</span><span className="text-sm font-black text-slate-900">{selectedStudent.gender}</span></div>
+                 </div>
+                 <div className="space-y-4">
+                    <div className="flex justify-between border-b border-slate-200/60 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class/Grade</span><span className="text-sm font-black text-slate-900">{selectedStudent.grade}</span></div>
+                    <div className="flex justify-between border-b border-slate-200/60 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stream</span><span className="text-sm font-black text-slate-900">{selectedStudent.stream}</span></div>
+                    <div className="flex justify-between border-b border-slate-200/60 pb-2"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Closing Date</span><span className="text-sm font-black text-slate-900">05 Apr 2024</span></div>
+                 </div>
+               </div>
+
+               {/* Marks Table */}
+               <div className="space-y-6">
+                 <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] border-l-4 border-emerald-500 pl-4">Scholastic Achievement</h4>
+                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">TERM 1 PROGRESS</span>
+                 </div>
+                 <div className="overflow-hidden border border-slate-100 rounded-[32px]">
+                   <table className="w-full text-left">
+                     <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.1em]">
+                       <tr>
+                         <th className="px-8 py-5">Academic Subject</th>
+                         <th className="px-8 py-5">Score (%)</th>
+                         <th className="px-8 py-5">Grade</th>
+                         <th className="px-8 py-5">CBC Competency</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-100">
+                        {[
+                          { sub: 'Mathematics', mark: 82, grade: 'A-', comp: 'EE' },
+                          { sub: 'English Language', mark: 78, grade: 'B+', comp: 'ME' },
+                          { sub: 'Kiswahili', mark: 65, grade: 'B-', comp: 'ME' },
+                          { sub: 'Science & Technology', mark: 88, grade: 'A', comp: 'EE' },
+                          { sub: 'Social Studies', mark: 72, grade: 'B', comp: 'ME' },
+                          { sub: 'Religious Education', mark: 91, grade: 'A', comp: 'EE' },
+                        ].map((item, idx) => (
+                          <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
+                            <td className="px-8 py-5 font-bold text-slate-800 text-sm">{item.sub}</td>
+                            <td className="px-8 py-5 font-black text-slate-900 text-base">{item.mark}</td>
+                            <td className="px-8 py-5">
+                               <span className="font-black text-emerald-600 text-base">{item.grade}</span>
+                            </td>
+                            <td className="px-8 py-5">
+                               <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-lg ${
+                                 item.comp === 'EE' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
+                               }`}>
+                                 {item.comp === 'EE' ? 'Exceeding' : 'Meeting'}
+                               </span>
+                            </td>
+                          </tr>
+                        ))}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+
+               {/* CBC Key Legend */}
+               <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">CBC Competency Key</p>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div><span className="text-[10px] font-bold text-slate-600">EE: Exceeding Expectations</span></div>
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-500 rounded-sm"></div><span className="text-[10px] font-bold text-slate-600">ME: Meeting Expectations</span></div>
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-amber-500 rounded-sm"></div><span className="text-[10px] font-bold text-slate-600">AE: Approaching Expectations</span></div>
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-sm"></div><span className="text-[10px] font-bold text-slate-600">BE: Below Expectations</span></div>
+                 </div>
+               </div>
+
+               {/* Remarks Section */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                 <div className="space-y-4">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class Teacher's Observation</h4>
+                   <div className="p-6 bg-slate-50 rounded-[28px] border-l-4 border-emerald-500 shadow-sm">
+                      <p className="text-sm font-medium text-slate-700 leading-relaxed italic">
+                        "A highly motivated learner who consistently shows brilliance in Science and Math. Their discipline is commendable. With continued effort in Kiswahili, they will be a top-tier scholar."
+                      </p>
+                      <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                         <span className="text-[10px] font-black text-slate-400 uppercase">Signature</span>
+                         <span className="text-[11px] font-black text-slate-800">Mr. J. Mwalimu</span>
+                      </div>
+                   </div>
+                 </div>
+                 <div className="space-y-4">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Principal's Verdict</h4>
+                   <div className="p-6 bg-slate-50 rounded-[28px] border-l-4 border-slate-900 shadow-sm">
+                      <p className="text-sm font-medium text-slate-700 leading-relaxed italic">
+                        "Excellent performance this term. The student has shown growth in both academic and personal conduct. We look forward to more progress next term."
+                      </p>
+                      <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                         <span className="text-[10px] font-black text-slate-400 uppercase">Seal / Stamp</span>
+                         <span className="text-[11px] font-black text-slate-800">Mrs. H. Headteacher</span>
+                      </div>
+                   </div>
+                 </div>
+               </div>
+
+               <div className="pt-10 border-t border-slate-100 text-center">
+                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.5em]">ElimuSmart Kenya SMS Certified Document</p>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible; }
+          .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 40px; }
+          .fixed { position: static !important; }
+          .overflow-hidden { overflow: visible !important; }
+        }
+      `}</style>
     </div>
   );
 };

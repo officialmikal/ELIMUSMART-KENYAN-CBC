@@ -1,5 +1,5 @@
 
-import { Student, UserRole, MessageTemplate } from './types';
+import { Student, UserRole, MessageTemplate, Subject } from './types';
 
 export const MOCK_STUDENTS: Student[] = [
   {
@@ -43,28 +43,50 @@ export const MOCK_STUDENTS: Student[] = [
   }
 ];
 
+export const INITIAL_SUBJECTS: Subject[] = [
+  // CBC Primary
+  { id: '1', name: 'Mathematics', category: 'CBC' },
+  { id: '2', name: 'English', category: 'CBC' },
+  { id: '3', name: 'Kiswahili', category: 'CBC' },
+  { id: '4', name: 'Science & Technology', category: 'CBC' },
+  { id: '5', name: 'Agriculture & Nutrition', category: 'CBC' },
+  { id: '6', name: 'Social Studies', category: 'CBC' },
+  { id: '7', name: 'Creative Arts & Sports', category: 'CBC' },
+  { id: '8', name: 'Religious Education', category: 'CBC' },
+  // JSS
+  { id: '9', name: 'Integrated Science', category: 'JSS' },
+  { id: '10', name: 'Pre-Technical Studies', category: 'JSS' },
+  { id: '11', name: 'Health Education', category: 'JSS' },
+  { id: '12', name: 'Business Studies', category: 'JSS' },
+  { id: '13', name: 'Life Skills Education', category: 'JSS' },
+  { id: '14', name: 'Computer Science', category: 'JSS' },
+];
+
 export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 't1',
     type: 'CLOSURE',
-    content: 'Dear Parent/Guardian, [School Name] will close on [Date] due to [Reason]. Kindly ensure your child arrives safely. Regards, Admin.'
-  },
-  {
-    id: 't2',
-    type: 'OPENING',
-    content: 'Dear Parent/Guardian, [School Name] will reopen on [Date] for Term [X]. Kindly ensure fees are cleared. Thank you.'
+    content: 'Dear Parent, [School Name] will close on [Date]. Please clear fees. Regards.'
   },
   {
     id: 't3',
     type: 'FEE_REMINDER',
-    content: 'Dear Parent/Guardian, [Student Name] (ADM: [ADM]) has an outstanding fee balance of KES [Amount]. Please clear via M-Pesa. Accounts Office.'
-  },
-  {
-    id: 't4',
-    type: 'PAYMENT_CONFIRMATION',
-    content: 'Payment Received. KES [Amount] for [Student Name]. New Balance: KES [Balance]. [School Name] Accounts.'
+    content: 'Dear Parent, [Student Name] (ADM: [ADM]) has a balance of KES [Amount]. Please pay via M-Pesa.'
   }
 ];
 
-export const GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7 (JSS)', 'Grade 8 (JSS)', 'Grade 9 (JSS)'];
-export const SUBJECTS = ['Mathematics', 'English', 'Kiswahili', 'Science & Tech', 'Social Studies', 'CRE/IRE', 'Pre-Technical', 'Creative Arts'];
+export const GRADES = [
+  'PP1', 
+  'PP2', 
+  'Grade 1', 
+  'Grade 2', 
+  'Grade 3', 
+  'Grade 4', 
+  'Grade 5', 
+  'Grade 6', 
+  'Grade 7 (JSS)', 
+  'Grade 8 (JSS)', 
+  'Grade 9 (JSS)'
+];
+
+export const YEARS = Array.from({ length: 50 }, (_, i) => 2001 + i);

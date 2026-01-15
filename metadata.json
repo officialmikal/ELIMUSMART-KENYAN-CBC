@@ -1,0 +1,7 @@
+{
+  "name": "ElimuSmart Kenya SMS",
+  "description": "A comprehensive School Management System for Kenyan Primary, Junior Secondary (CBC), and Secondary schools featuring automated parent messaging, professional invoicing, and role-based access.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, Plus, Trash2, Eye, X, UserPlus, ShieldAlert, Banknote, ShieldCheck } from 'lucide-react';
+import { Search, Plus, Trash2, Eye, X, UserPlus, ShieldAlert, Banknote, ShieldCheck, AlertCircle } from 'lucide-react';
 import { GRADES } from '../constants';
 import { Student, UserRole } from '../types';
 
@@ -57,7 +57,7 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, set
 
   const handleDelete = () => {
     if (deleteModal.student && confirmAdm === deleteModal.student.admNo) {
-      setStudents(students.filter(s => s.id !== deleteModal.student?.id));
+      setStudents(prev => prev.filter(s => s.id !== deleteModal.student?.id));
       setDeleteModal({ isOpen: false, student: null });
     }
   };
@@ -176,6 +176,44 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, set
         </div>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && deleteModal.student && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md animate-in fade-in" onClick={() => setDeleteModal({isOpen: false, student: null})} />
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md p-10 relative z-10 animate-in zoom-in-95">
+             <div className="w-20 h-20 bg-red-50 rounded-[28px] flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-10 h-10 text-red-600" />
+             </div>
+             <h3 className="text-2xl font-black text-slate-900 text-center uppercase tracking-tight">Verify Deletion</h3>
+             <p className="text-sm text-slate-500 text-center mt-2 font-medium">
+               You are about to remove <span className="font-bold text-slate-900">{deleteModal.student.name}</span>. This action is irreversible.
+             </p>
+             <div className="mt-8 space-y-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase text-center tracking-widest">Type Admission No <span className="text-slate-900">{deleteModal.student.admNo}</span> to confirm</p>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center text-lg font-black tracking-widest outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="ADM NUMBER"
+                  value={confirmAdm}
+                  onChange={e => setConfirmAdm(e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                   <button onClick={() => setDeleteModal({isOpen: false, student: null})} className="py-4 text-slate-400 font-black text-xs uppercase hover:text-slate-600">Dismiss</button>
+                   <button 
+                     disabled={confirmAdm !== deleteModal.student.admNo}
+                     onClick={handleDelete}
+                     className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all ${
+                       confirmAdm === deleteModal.student.admNo ? 'bg-red-600 text-white shadow-red-100 hover:bg-red-700 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                     }`}
+                   >
+                     Confirm Delete
+                   </button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* View Student Modal */}
       {viewingStudent && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -215,9 +253,51 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, set
           </div>
         </div>
       )}
-      
-      {/* Enrollment and Delete Modals remain same but use maskPhone if needed in summaries */}
-      {/* ... (Existing Modal implementation) ... */}
+
+      {/* Enroll Modal */}
+      {isEnrollModalOpen && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setIsEnrollModalOpen(false)} />
+           <form onSubmit={handleEnroll} className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl p-10 relative z-10 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto scrollbar-hide">
+              <h3 className="text-2xl font-black text-slate-900 mb-8 uppercase tracking-tight">New Learner Enrollment</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Student Full Name</label>
+                    <input type="text" required value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none" placeholder="e.g. Kelvin Otieno" />
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Admission Number</label>
+                    <input type="text" required value={newStudent.admNo} onChange={e => setNewStudent({...newStudent, admNo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none" placeholder="e.g. 2024/001" />
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Grade Level</label>
+                    <select value={newStudent.grade} onChange={e => setNewStudent({...newStudent, grade: e.target.value})} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none">
+                       {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Initial Fee Balance (KES)</label>
+                    <input type="number" required value={newStudent.feeBalance} onChange={e => setNewStudent({...newStudent, feeBalance: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none" placeholder="0.00" />
+                 </div>
+                 <div className="md:col-span-2 border-t border-slate-100 pt-6 mt-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Parent / Guardian Details</h4>
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Parent Name</label>
+                    <input type="text" required value={newStudent.parentName} onChange={e => setNewStudent({...newStudent, parentName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none" />
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">Parent Phone Number</label>
+                    <input type="text" required value={newStudent.parentPhone} onChange={e => setNewStudent({...newStudent, parentPhone: e.target.value})} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none" placeholder="+254..." />
+                 </div>
+              </div>
+              <div className="flex justify-end gap-4 mt-10">
+                 <button type="button" onClick={() => setIsEnrollModalOpen(false)} className="px-8 py-4 text-slate-500 font-black text-xs uppercase">Cancel</button>
+                 <button type="submit" className="px-12 py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all">Enroll Learner</button>
+              </div>
+           </form>
+        </div>
+      )}
     </div>
   );
 };

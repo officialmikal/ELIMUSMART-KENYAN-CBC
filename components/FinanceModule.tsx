@@ -1,13 +1,14 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Plus, Search, Download, Printer, Send, CheckCircle2, AlertCircle,
   Clock, Banknote, FileText, X, ChevronRight, Hash, CreditCard, Receipt,
   Eye, Trash2, Filter, Wallet, Building, Smartphone, Edit3, Settings, 
-  TrendingUp, ArrowUpRight, ArrowDownRight, Users, Loader2, ShieldCheck
+  TrendingUp, ArrowUpRight, ArrowDownRight, Users, Loader2, ShieldCheck, FileUp
 } from 'lucide-react';
 import { GRADES, YEARS } from '../constants';
 import { Invoice, Student, Payment } from '../types';
+import Papa from 'papaparse';
 
 interface FeeStructureItem {
   id: string;
@@ -18,10 +19,11 @@ interface FeeStructureItem {
 
 interface FinanceModuleProps {
   students: Student[];
+  setStudents?: React.Dispatch<React.SetStateAction<Student[]>>;
   privacyMode?: boolean;
 }
 
-const FinanceModule: React.FC<FinanceModuleProps> = ({ students, privacyMode }) => {
+const FinanceModule: React.FC<FinanceModuleProps> = ({ students, setStudents, privacyMode }) => {
   const [activeSubTab, setActiveSubTab] = useState<'invoices' | 'payments' | 'structure'>('invoices');
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isBulkBillModalOpen, setIsBulkBillModalOpen] = useState(false);
@@ -31,6 +33,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ students, privacyMode }) 
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [gradeFilter, setGradeFilter] = useState('All');
   const [processingPayment, setProcessingPayment] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [feeItems, setFeeItems] = useState<FeeStructureItem[]>([
     { id: '1', name: 'Tuition Fee (PP1-PP2)', amount: 8500, category: 'Tuition' },
@@ -78,21 +81,90 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ students, privacyMode }) 
     return matchesSearch && matchesGrade;
   });
 
-  const handleRecordPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Logic as before ...
+  const handleBulkPaymentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setProcessingPayment(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const paymentRows = results.data as any[];
+        
+        if (setStudents) {
+          setStudents(prevStudents => {
+            const updated = [...prevStudents];
+            paymentRows.forEach(row => {
+              const adm = row.ADM || row.admNo;
+              const amount = Number(row.Amount || row.amount || 0);
+              const studentIdx = updated.findIndex(s => s.admNo === adm);
+              
+              if (studentIdx >= 0 && amount > 0) {
+                updated[studentIdx].feeBalance = Math.max(0, updated[studentIdx].feeBalance - amount);
+                
+                // Add to internal payments history
+                const newPayment: Payment = {
+                  id: Date.now().toString() + Math.random(),
+                  receiptNo: row.Receipt || row.receiptNo || `RCPT-${Math.floor(Math.random() * 100000)}`,
+                  invoiceId: `dyn-${updated[studentIdx].id}`,
+                  studentId: updated[studentIdx].id,
+                  amount: amount,
+                  method: (row.Method || row.method || 'M-Pesa') as any,
+                  reference: row.Ref || row.reference || 'Excel Import',
+                  date: new Date().toISOString()
+                };
+                setPayments(p => [newPayment, ...p]);
+              }
+            });
+            return updated;
+          });
+        }
+        setProcessingPayment(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      },
+      error: () => setProcessingPayment(false)
+    });
+  };
+
+  const handleExportLedger = () => {
+    const dataToExport = students.map(s => ({
+      'ADM': s.admNo,
+      'Learner Name': s.name,
+      'Grade': s.grade,
+      'Stream': s.stream,
+      'Phone': s.parentPhone,
+      'Outstanding Balance (KES)': s.feeBalance
+    }));
+
+    const csv = Papa.unparse(dataToExport);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Finance_Ledger_${new Date().toLocaleDateString()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-12">
+      <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleBulkPaymentUpload} />
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Finance Control Center</h2>
           <p className="text-sm text-slate-500 font-medium">Bursar & Accounts Management Port</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-           <button onClick={() => setIsBulkBillModalOpen(true)} className="flex-1 sm:flex-none justify-center bg-slate-100 text-slate-700 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Bulk Bill
+           <button onClick={handleExportLedger} className="flex-1 sm:flex-none justify-center bg-slate-900 text-white px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-xl shadow-slate-200">
+            <Download className="w-4 h-4" /> Download Ledger
+          </button>
+           <button onClick={() => fileInputRef.current?.click()} disabled={processingPayment} className="flex-1 sm:flex-none justify-center bg-slate-100 text-slate-700 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
+            {processingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+            {processingPayment ? 'Importing...' : 'Upload Payments'}
           </button>
            <button onClick={() => setIsPaymentModalOpen(true)} className="flex-1 sm:flex-none justify-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-100 transition-all active:scale-95 flex items-center gap-2">
             <Banknote className="w-5 h-5" /> Pay Fees
@@ -177,7 +249,6 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ students, privacyMode }) 
           </div>
         </div>
       )}
-      {/* Rest of the Finance components remain the same ... */}
     </div>
   );
 };

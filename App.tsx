@@ -5,8 +5,8 @@ import {
   MessageSquare, Settings, LogOut, Menu, X, Bell, Lock, Download, 
   Share, Smartphone, ShieldCheck, ShieldAlert, Eye, EyeOff, Loader2
 } from 'lucide-react';
-import { UserRole, User, Student, SecuritySettings } from './types';
-import { MOCK_STUDENTS } from './constants';
+import { UserRole, User, Student, SecuritySettings, Subject } from './types';
+import { MOCK_STUDENTS, INITIAL_SUBJECTS } from './constants';
 import Dashboard from './components/Dashboard';
 import StudentsModule from './components/StudentsModule';
 import MarksEntryModule from './components/MarksEntryModule';
@@ -40,6 +40,7 @@ const App: React.FC = () => {
 
   // Global State
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
+  const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
   const [marks, setMarks] = useState<Record<string, Record<string, { score: string; remark: string }>>>({});
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
@@ -142,10 +143,10 @@ const App: React.FC = () => {
       case 'students': return <StudentsModule userRole={role} students={students} setStudents={setStudents} {...commonProps} />;
       case 'marks': return <MarksEntryModule userRole={role} students={students} marks={marks} setMarks={setMarks} />;
       case 'reports': return <ReportsModule students={students} marks={marks} />;
-      case 'finance': return <FinanceModule students={students} {...commonProps} />;
+      case 'finance': return <FinanceModule students={students} setStudents={setStudents} {...commonProps} />;
       case 'messaging': return <MessagingModule students={students} {...commonProps} />;
       case 'analytics': return <AnalyticsModule students={students} />;
-      case 'settings': return <SettingsModule security={security} setSecurity={setSecurity} />;
+      case 'settings': return <SettingsModule security={security} setSecurity={setSecurity} subjects={subjects} setSubjects={setSubjects} />;
       default: return <Dashboard onNavigate={setActiveTab} userRole={role} studentsCount={students.length} />;
     }
   };
@@ -153,7 +154,6 @@ const App: React.FC = () => {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Animated Background Gradients */}
         <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-600/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-0 -right-4 w-72 h-72 bg-blue-600/10 rounded-full blur-[120px]"></div>
         
@@ -208,17 +208,12 @@ const App: React.FC = () => {
               {isLoginDisabled ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
               {isLoginDisabled ? 'Account Locked' : 'Decrypt & Login'}
             </button>
-            <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
-               <ShieldCheck className="w-3 h-3 text-emerald-500" />
-               AES-256 Cloud Encryption Active
-            </div>
           </form>
         </div>
       </div>
     );
   }
 
-  // Session Lock Overlay
   if (isLocked) {
     return (
       <div className="fixed inset-0 z-[1000] bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center p-4">
@@ -236,12 +231,7 @@ const App: React.FC = () => {
                  type="password" 
                  placeholder="Enter Password" 
                  className="w-full bg-white/10 border border-white/10 rounded-2xl p-5 text-center text-white font-black outline-none focus:ring-2 focus:ring-emerald-500"
-                 onKeyDown={(e) => {
-                   if (e.key === 'Enter') {
-                     // In a real app, verify password. For mock, just unlock.
-                     setIsLocked(false);
-                   }
-                 }}
+                 onKeyDown={(e) => { if (e.key === 'Enter') setIsLocked(false); }}
                />
                <div className="flex flex-col gap-3">
                  <button onClick={() => setIsLocked(false)} className="w-full bg-emerald-600 text-white py-5 rounded-[24px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/40">Resume Session</button>
@@ -265,9 +255,7 @@ const App: React.FC = () => {
       `}>
         <div className="flex items-center justify-between p-6 border-b border-emerald-900/30">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center"><ShieldCheck className="w-5 h-5 text-white" /></div>
             <h1 className="font-black text-lg uppercase tracking-tight">ElimuSmart</h1>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-emerald-200"><X className="w-6 h-6" /></button>
@@ -289,14 +277,9 @@ const App: React.FC = () => {
         <div className="absolute bottom-0 w-full p-4 border-t border-emerald-900/30 bg-black/20">
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold">{currentUser?.name.charAt(0)}</div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate">{currentUser?.name}</p>
-              <p className="text-[10px] text-emerald-400 truncate uppercase font-black">{currentUser?.role}</p>
-            </div>
+            <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate">{currentUser?.name}</p><p className="text-[10px] text-emerald-400 truncate uppercase font-black">{currentUser?.role}</p></div>
           </div>
-          <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-3 px-4 py-3 text-red-300 hover:text-white hover:bg-red-500/20 rounded-xl transition-all text-xs font-black uppercase tracking-widest">
-            <LogOut className="w-4 h-4" /> End Session
-          </button>
+          <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-3 px-4 py-3 text-red-300 hover:text-white hover:bg-red-500/20 rounded-xl transition-all text-xs font-black uppercase tracking-widest"><LogOut className="w-4 h-4" /> End Session</button>
         </div>
       </aside>
 
@@ -304,76 +287,20 @@ const App: React.FC = () => {
         <header className="h-20 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu className="w-6 h-6" /></button>
-             <div>
-               <h2 className="font-black text-slate-900 uppercase tracking-tight truncate text-lg">{activeTab.replace('-', ' ')}</h2>
-               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                  <ShieldCheck className="w-3 h-3 text-emerald-500" /> Secure Terminal
-               </div>
-             </div>
+             <div><h2 className="font-black text-slate-900 uppercase tracking-tight truncate text-lg">{activeTab.replace('-', ' ')}</h2><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400"><ShieldCheck className="w-3 h-3 text-emerald-500" /> Secure Terminal</div></div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Global Privacy Toggle */}
             <button 
               onClick={() => setSecurity(s => ({ ...s, privacyMode: !s.privacyMode }))}
-              title={security.privacyMode ? "Disable Privacy Mode" : "Enable Privacy Mode"}
               className={`p-3 rounded-2xl border transition-all flex items-center gap-2 ${security.privacyMode ? 'bg-slate-900 border-slate-900 text-emerald-400 shadow-lg' : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'}`}
-            >
-              {security.privacyMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">
-                {security.privacyMode ? 'Stealth Active' : 'Privacy Mode'}
-              </span>
-            </button>
-
-            <button className="p-3 text-slate-500 bg-slate-50 border border-slate-200 rounded-2xl relative hover:bg-slate-100 transition-colors">
-              <Bell className="w-5 h-5" />
-              <div className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></div>
-            </button>
+            >{security.privacyMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}<span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">{security.privacyMode ? 'Stealth Active' : 'Privacy Mode'}</span></button>
+            <button className="p-3 text-slate-500 bg-slate-50 border border-slate-200 rounded-2xl relative hover:bg-slate-100 transition-colors"><Bell className="w-5 h-5" /><div className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></div></button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-10">
           {renderContent()}
         </div>
       </main>
-
-      {/* PWA INSTALLATION UI */}
-      {(isInstallable || showIOSHint) && (
-        <div className="fixed bottom-8 right-8 left-8 md:left-auto md:w-80 z-[300] animate-in slide-in-from-bottom-12 duration-500">
-           <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-white/10 backdrop-blur-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-110 transition-transform">
-                <Smartphone className="w-24 h-24" />
-              </div>
-
-              {!showIOSHint ? (
-                <div className="relative z-10 space-y-4">
-                  <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center animate-pulse-soft">
-                        <Download className="w-6 h-6" />
-                     </div>
-                     <div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Install App</h4>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Native Performance</p>
-                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                     <button onClick={handleInstallClick} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/40">Install Now</button>
-                     <button onClick={() => setIsInstallable(false)} className="px-4 py-3 bg-white/5 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white">Close</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative z-10 space-y-5">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-black uppercase tracking-tight">iOS Setup</h4>
-                    <button onClick={() => setShowIOSHint(false)} className="text-slate-500"><X className="w-4 h-4" /></button>
-                  </div>
-                  <div className="space-y-3">
-                     <p className="text-[11px] text-slate-300">Tap <Share className="w-3 h-3 inline"/> then <span className="text-emerald-500 font-bold">"Add to Home Screen"</span>.</p>
-                  </div>
-                  <button onClick={() => setShowIOSHint(false)} className="w-full bg-slate-800 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Done</button>
-                </div>
-              )}
-           </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { Search, Plus, Trash2, Eye, X, UserPlus, ShieldAlert, Banknote, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, Plus, Trash2, Eye, X, UserPlus, ShieldAlert, Banknote, ShieldCheck, AlertCircle, FileUp, Loader2, Download } from 'lucide-react';
 import { GRADES } from '../constants';
 import { Student, UserRole } from '../types';
+import Papa from 'papaparse';
 
 interface StudentsModuleProps {
   userRole: UserRole;
@@ -14,6 +15,9 @@ interface StudentsModuleProps {
 const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, setStudents, privacyMode }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; student: Student | null }>({
     isOpen: false,
@@ -62,6 +66,78 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, set
     }
   };
 
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const importedData = results.data as any[];
+        setStudents(prev => {
+          const updatedList = [...prev];
+          importedData.forEach(row => {
+            const studentIdx = updatedList.findIndex(s => s.admNo === row.ADM);
+            const newStudentObj: Student = {
+              id: studentIdx >= 0 ? updatedList[studentIdx].id : Date.now().toString() + Math.random(),
+              name: row.Name || row.name || 'Unknown',
+              admNo: row.ADM || row.admNo || 'N/A',
+              gender: (row.Gender || row.gender || 'Male') as any,
+              dob: row.DOB || row.dob || '2015-01-01',
+              grade: row.Grade || row.grade || 'PP1',
+              stream: row.Stream || row.stream || 'A',
+              parentName: row.Parent || row.parentName || 'N/A',
+              parentPhone: row.Phone || row.parentPhone || 'N/A',
+              residence: row.Residence || row.residence || 'N/A',
+              feeBalance: Number(row.Balance || row.feeBalance || 0)
+            };
+
+            if (studentIdx >= 0) {
+              updatedList[studentIdx] = newStudentObj;
+            } else {
+              updatedList.unshift(newStudentObj);
+            }
+          });
+          return updatedList;
+        });
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      },
+      error: (err) => {
+        console.error('CSV Parsing Error:', err);
+        setIsUploading(false);
+      }
+    });
+  };
+
+  const handleExportExcel = () => {
+    const dataToExport = students.map(s => ({
+      'ADM': s.admNo,
+      'Name': s.name,
+      'Gender': s.gender,
+      'Grade': s.grade,
+      'Stream': s.stream,
+      'DOB': s.dob,
+      'Parent': s.parentName,
+      'Phone': s.parentPhone,
+      'Residence': s.residence,
+      'Balance': s.feeBalance
+    }));
+
+    const csv = Papa.unparse(dataToExport);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Students_Master_List_${new Date().toLocaleDateString()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleEnroll = (e: React.FormEvent) => {
     e.preventDefault();
     const studentToAdd = {
@@ -80,19 +156,45 @@ const StudentsModule: React.FC<StudentsModuleProps> = ({ userRole, students, set
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleExcelUpload} 
+        className="hidden" 
+        accept=".csv" 
+      />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Student Repository</h2>
           <p className="text-sm text-slate-500 font-medium">Manage PP1 - Grade 9 CBC Enrollments</p>
         </div>
-        {userRole === UserRole.ADMIN && (
-          <button 
-            onClick={() => setIsEnrollModalOpen(true)}
-            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl shadow-emerald-100 transition-all active:scale-95"
-          >
-            <Plus className="w-5 h-5" /> Enroll Learner
-          </button>
-        )}
+        <div className="flex gap-2 w-full sm:w-auto">
+          {userRole === UserRole.ADMIN && (
+            <>
+              <button 
+                onClick={handleExportExcel}
+                className="flex-1 sm:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-black transition-all shadow-xl shadow-slate-200"
+              >
+                <Download className="w-5 h-5" /> Export List
+              </button>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex-1 sm:flex-none bg-slate-100 text-slate-700 px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+              >
+                {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileUp className="w-5 h-5" />}
+                {isUploading ? 'Importing...' : 'Excel Upload'}
+              </button>
+              <button 
+                onClick={() => setIsEnrollModalOpen(true)}
+                className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl shadow-emerald-100 transition-all active:scale-95"
+              >
+                <Plus className="w-5 h-5" /> Enroll Learner
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">

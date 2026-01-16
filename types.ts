@@ -14,6 +14,13 @@ export interface User {
   name: string;
 }
 
+export interface SecuritySettings {
+  privacyMode: boolean;
+  sessionTimeout: number; // minutes
+  twoFactorEnabled: boolean;
+  strictMode: boolean;
+}
+
 export interface Student {
   id: string;
   name: string;
